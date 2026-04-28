@@ -1,0 +1,46 @@
+name: Build Fast Kernel DTB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install deps
+      run: |
+        sudo apt update
+        sudo apt install -y bc bison flex make libssl-dev \
+        libncurses5-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+
+    - name: Create out dir
+      run: mkdir -p out
+
+    - name: Load defconfig
+      run: |
+        make O=out ARCH=arm64 dandelion_defconfig
+
+    # ❗ tắt bảo mật để tránh lỗi compiler
+    - name: Disable stack protector
+      run: |
+        scripts/config --file out/.config -d CC_STACKPROTECTOR_STRONG
+        scripts/config --file out/.config -e CC_STACKPROTECTOR_NONE
+        make O=out ARCH=arm64 olddefconfig
+
+    - name: Build Image.gz-dtb (minimal)
+      run: |
+        make -j$(nproc) O=out \
+        ARCH=arm64 \
+        CROSS_COMPILE=aarch64-linux-gnu- \
+        CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+        Image.gz-dtb
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel_dtb
+        path: out/arch/arm64/boot/Image.gz-dtb
