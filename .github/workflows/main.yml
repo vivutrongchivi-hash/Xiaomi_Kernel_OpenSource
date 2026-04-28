@@ -1,4 +1,4 @@
-name: Build Fast Kernel DTB
+name: Build Kernel DTB (Fast & Fixed)
 
 on:
   workflow_dispatch:
@@ -8,30 +8,40 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Checkout
+    - name: Checkout Source
       uses: actions/checkout@v4
 
-    - name: Install deps
+    # 📦 Cài dependencies
+    - name: Install Dependencies
       run: |
         sudo apt update
         sudo apt install -y bc bison flex make libssl-dev \
-        libncurses5-dev gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+        libncurses5-dev gcc-aarch64-linux-gnu \
+        gcc-arm-linux-gnueabi python2
 
-    - name: Create out dir
+    # 🔥 Fix Python cho MediaTek (DrvGen bắt buộc Python2)
+    - name: Set Python2 as default
+      run: |
+        sudo ln -sf /usr/bin/python2 /usr/bin/python
+        python --version
+
+    - name: Create Output Folder
       run: mkdir -p out
 
-    - name: Load defconfig
+    # ⚙️ Load config
+    - name: Load Defconfig
       run: |
         make O=out ARCH=arm64 dandelion_defconfig
 
-    # ❗ tắt bảo mật để tránh lỗi compiler
-    - name: Disable stack protector
+    # 🔥 Fix lỗi stack protector
+    - name: Fix Stack Protector
       run: |
         scripts/config --file out/.config -d CC_STACKPROTECTOR_STRONG
         scripts/config --file out/.config -e CC_STACKPROTECTOR_NONE
         make O=out ARCH=arm64 olddefconfig
 
-    - name: Build Image.gz-dtb (minimal)
+    # 🚀 Build kernel + dtb (cái bạn cần)
+    - name: Build Image.gz-dtb
       run: |
         make -j$(nproc) O=out \
         ARCH=arm64 \
@@ -39,7 +49,8 @@ jobs:
         CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
         Image.gz-dtb
 
-    - name: Upload
+    # 📤 Upload kết quả
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: kernel_dtb
