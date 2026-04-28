@@ -1,4 +1,4 @@
-name: Build Kernel DTB (Fast & Fixed)
+name: Build Kernel DTB (Stable)
 
 on:
   workflow_dispatch:
@@ -19,8 +19,8 @@ jobs:
         libncurses5-dev gcc-aarch64-linux-gnu \
         gcc-arm-linux-gnueabi python2
 
-    # 🔥 Fix Python cho MediaTek (DrvGen bắt buộc Python2)
-    - name: Set Python2 as default
+    # 🔥 Fix Python cho MediaTek (DrvGen cần Python2)
+    - name: Set Python2
       run: |
         sudo ln -sf /usr/bin/python2 /usr/bin/python
         python --version
@@ -28,25 +28,27 @@ jobs:
     - name: Create Output Folder
       run: mkdir -p out
 
-    # ⚙️ Load config
+    # ⚙️ Load defconfig
     - name: Load Defconfig
       run: |
         make O=out ARCH=arm64 dandelion_defconfig
 
-    # 🔥 Fix lỗi stack protector
+    # 🔥 Fix stack protector
     - name: Fix Stack Protector
       run: |
         scripts/config --file out/.config -d CC_STACKPROTECTOR_STRONG
         scripts/config --file out/.config -e CC_STACKPROTECTOR_NONE
         make O=out ARCH=arm64 olddefconfig
 
-    # 🚀 Build kernel + dtb (cái bạn cần)
+    # 🚀 Build kernel + dtb (đã fix lỗi GCC yylloc)
     - name: Build Image.gz-dtb
       run: |
         make -j$(nproc) O=out \
         ARCH=arm64 \
         CROSS_COMPILE=aarch64-linux-gnu- \
         CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+        HOSTCFLAGS="-fcommon" \
+        HOSTLDFLAGS="-fcommon" \
         Image.gz-dtb
 
     # 📤 Upload kết quả
