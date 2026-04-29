@@ -1,4 +1,4 @@
-name: Build Kernel DTB (Stable)
+name: Build Kernel DTB (Final Stable)
 
 on:
   workflow_dispatch:
@@ -19,16 +19,18 @@ jobs:
         libncurses5-dev gcc-aarch64-linux-gnu \
         gcc-arm-linux-gnueabi python2
 
-    # 🔥 Fix Python cho MediaTek (DrvGen cần Python2)
-    - name: Set Python2
+    # 🔥 ÉP toàn bộ Python về Python2 (fix DrvGen)
+    - name: Force Python2
       run: |
         sudo ln -sf /usr/bin/python2 /usr/bin/python
+        sudo ln -sf /usr/bin/python2 /usr/bin/python3
         python --version
 
+    # 📁 Tạo thư mục build
     - name: Create Output Folder
       run: mkdir -p out
 
-    # ⚙️ Load defconfig
+    # ⚙️ Load config
     - name: Load Defconfig
       run: |
         make O=out ARCH=arm64 dandelion_defconfig
@@ -40,7 +42,7 @@ jobs:
         scripts/config --file out/.config -e CC_STACKPROTECTOR_NONE
         make O=out ARCH=arm64 olddefconfig
 
-    # 🚀 Build kernel + dtb (đã fix lỗi GCC yylloc)
+    # 🚀 Build kernel + dtb (fix luôn lỗi GCC mới)
     - name: Build Image.gz-dtb
       run: |
         make -j$(nproc) O=out \
@@ -51,7 +53,7 @@ jobs:
         HOSTLDFLAGS="-fcommon" \
         Image.gz-dtb
 
-    # 📤 Upload kết quả
+    # 📤 Upload file
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
